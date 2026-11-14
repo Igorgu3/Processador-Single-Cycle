@@ -15,22 +15,22 @@ output reg [2:0] ALUControl
 			2'b1?: begin
 				casez(funct) begin
 					6'b100000: begin
-						ALUControl = 010;
+						ALUControl = 3'b010;
 					end
 					6'b100010: begin
-						ALUControl = 110;
+						ALUControl = 3'b110;
 					end
 					6'b100100: begin
-						ALUControl = 000;
+						ALUControl = 3'b000;
 					end
 					6'b100101: begin
-						ALUControl = 001;
+						ALUControl = 3'b001;
 					end
 					6'b101010: begin
-						ALUControl = 111;
+						ALUControl = 3'b111;
 					end
 					6'b101011: begin
-						ALUControl = 011;
+						ALUControl = 3'b011;
 					end
 				endcase
 			end

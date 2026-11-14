@@ -14,7 +14,7 @@ output reg RegWrite
 always @(*) begin
 	MemtoReg = 1'b0;
 	MemWrite = 1'b0;
-	Branch = 1'b0;
+	Branch = 1'b0;		//permanece 0 até o tipo beq
 	ALUControl = 1'b0;
 	ALUSrc = 1'b0;
 	RegDst = 1'b0;
@@ -40,6 +40,12 @@ always @(*) begin
 			MemtoReg = 1'b1;
 			RegWrite = 1'b1;
 			ALUOP = 2'b00;
+		end
+		
+		// tipo beq
+		6'b000100: begin
+			Branch = 1'b1;
+			ALUOP = 1'b1;	//subtração
 		end
 		
 		default: begin
