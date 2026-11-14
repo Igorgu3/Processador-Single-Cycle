@@ -12,27 +12,26 @@ output reg RegWrite
 
 
 always @(*) begin
-	MemtoReg = 1'b0;
-	MemWrite = 1'b0;
+	MemtoReg = 1'b0;	//Indica se escreve no registrador
+	MemWrite = 1'b0;	//flag de escrita na memória
 	Branch = 1'b0;		//permanece 0 até o tipo beq
 	ALUControl = 1'b0;
-	ALUSrc = 1'b0;
+	ALUSrc = 1'b0;		//indica se ALU recebe RD2 ou SignImm
 	RegDst = 1'b0;		//destino é rt
-	RegWrite = 1'b0;
+	RegWrite = 1'b0;	//flag de escrita no registrador
 	
 	case(opcode) begin
 		// tipo R
 		6'b000000: begin
 			RegDst = 1'b1;		//destino é rd
 			RegWrite = 1'b1;
-			ALUOP = 2'b10;
+			ALUSrc = 1'b0;
 		end
 		
 		// tipo sw
 		6'b101011: begin
 			ALUSrc = 1'b1;
 			MemWrite = 1'b1;
-			ALUOP = 2'b00;
 		end
 		// tipo lw
 		6'b100011: begin
@@ -40,13 +39,12 @@ always @(*) begin
 			ALUSrc = 1'b1;
 			MemtoReg = 1'b1;
 			RegWrite = 1'b1;
-			ALUOP = 2'b00;
 		end
 		
 		// tipo beq
 		6'b000100: begin
 			Branch = 1'b1;
-			ALUOP = 1'b1;	//subtração
+			ALUSrc = 1'b0;
 		end
 		
 		default: begin
