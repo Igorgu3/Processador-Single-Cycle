@@ -17,13 +17,13 @@ always @(*) begin
 	Branch = 1'b0;		//permanece 0 até o tipo beq
 	ALUControl = 1'b0;
 	ALUSrc = 1'b0;
-	RegDst = 1'b0;
+	RegDst = 1'b0;		//destino é rt
 	RegWrite = 1'b0;
 	
 	case(opcode) begin
 		// tipo R
 		6'b000000: begin
-			RegDst = 1'b1;
+			RegDst = 1'b1;		//destino é rd
 			RegWrite = 1'b1;
 			ALUOP = 2'b10;
 		end
@@ -36,6 +36,7 @@ always @(*) begin
 		end
 		// tipo lw
 		6'b100011: begin
+			RegDst = 1'b0;		//destino é rt
 			ALUSrc = 1'b1;
 			MemtoReg = 1'b1;
 			RegWrite = 1'b1;
