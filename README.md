@@ -36,4 +36,4 @@ Para o desenvolvimento ágil, a microarquitetura foi dividida em blocos hierárq
 * **[Nome do Integrante 2]** - ULA e Gerenciamento do Program Counter
 * **[Nome do Integrante 3]** - Blocos de Extensão (Sign Extend/Shift) e Multiplexadores
 * **Mariana Beatriz** - Datapath Principal e Integração
-* **Gabriel Santos** - Unidade de Controle Single-Cycle
+* **Gabriel da Cruz** - Unidade de Controle Single-Cycle
