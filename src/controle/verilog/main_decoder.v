@@ -1,6 +1,7 @@
 module main_decoder(
 input wire [5:0] Opcode,
 input wire [5:0] funct,
+output reg [1:0] ALUop,
 output reg MemtoReg,
 output reg MemWrite,
 output reg Branch,
@@ -19,6 +20,7 @@ always @(*) begin
 	ALUSrc = 1'b0;		//indica se ALU recebe RD2 ou SignImm
 	RegDst = 1'b0;		//destino é rt
 	RegWrite = 1'b0;	//flag de escrita no registrador
+	ALUop = 2'b00;
 	
 	case(opcode) begin
 		// tipo R
@@ -26,6 +28,7 @@ always @(*) begin
 			RegDst = 1'b1;		//destino é rd
 			RegWrite = 1'b1;
 			ALUSrc = 1'b0;
+			ALUop = 2'b10;
 		end
 		
 		// tipo sw
@@ -45,6 +48,19 @@ always @(*) begin
 		6'b000100: begin
 			Branch = 1'b1;
 			ALUSrc = 1'b0;
+			ALUop = 2'b01;s
+		end
+		
+		//tipo immediate
+		6'b001000: begin
+			RegWrite = 1'b1;
+			ALUSrc = 1'b1;
+		end
+		
+		//tipo jump
+		6'b000010: begin
+			RegWrite = 1'b0;
+			MemWrite = 1'b0;
 		end
 		
 		default: begin
