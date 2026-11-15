@@ -66,7 +66,7 @@ int main(int argc, char** argv)
                   << " | Branch:   " << (int)top->Branch << "\n"
                   << " | ALUControl: " << std::bitset<2>(top->ALUControl) << "\n"
                   << " | ALUSrc: "   << (int)top->ALUSrc << "\n"
-                  << " | RegDst:   " << (int)top->RegDst << "\n";
+                  << " | RegDst:   " << (int)top->RegDst << "\n"
                   << "   RegWrite: " << (int)top->RegWrite << "\n";
     }
     

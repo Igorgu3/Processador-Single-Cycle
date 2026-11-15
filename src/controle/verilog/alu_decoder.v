@@ -5,7 +5,7 @@ output reg [2:0] ALUControl
 );
 
 	always @(*) begin		
-		casez(ALUop)
+		priority casez(ALUop)
 			2'b00: begin
 				//add
 				ALUControl = 3'b010;
@@ -40,6 +40,9 @@ output reg [2:0] ALUControl
 						//mult
 						ALUControl = 3'b011;
 					end
+					
+					default: ALUControl = 3'b000;
+					
 				endcase
 			end
 		endcase
