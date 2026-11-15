@@ -12,7 +12,15 @@ module src_top (
 );
 
 	control_unit u_control (
-		
+		.Opcode(.Opcode),
+		.funct(funct),
+		.MemtoReg(MemtoReg),
+		.MemWrite(MemWrite),
+		.Branch(Branch),
+		.ALUControl(ALUControl),
+		.ALUSrc(ALUSrc),
+		.RegDst(RegDst),
+		.RegWrite(RegWrite)
 	);
 
 	alu_decoder u_decoder (

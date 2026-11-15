@@ -22,7 +22,7 @@ always @(*) begin
 	RegWrite = 1'b0;	//flag de escrita no registrador
 	ALUop = 2'b00;
 	
-	case(opcode) begin
+	case(opcode)
 		// tipo R
 		6'b000000: begin
 			RegDst = 1'b1;		//destino é rd
@@ -48,7 +48,7 @@ always @(*) begin
 		6'b000100: begin
 			Branch = 1'b1;
 			ALUSrc = 1'b0;
-			ALUop = 2'b01;s
+			ALUop = 2'b01;
 		end
 		
 		//tipo immediate
@@ -67,7 +67,6 @@ always @(*) begin
 			//unknown instructions
 		end
 	endcase
-    end
 end
 
 endmodule

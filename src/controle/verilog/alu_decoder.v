@@ -5,7 +5,7 @@ output reg [2:0] ALUControl
 );
 
 	always @(*) begin		
-		casez(ALUop) begin
+		casez(ALUop)
 			2'b00: begin
 				//add
 				ALUControl = 3'b010;
@@ -15,7 +15,7 @@ output reg [2:0] ALUControl
 				ALUControl = 3'b110;
 			end
 			2'b1?: begin
-				casez(funct) begin
+				casez(funct)
 					6'b100000: begin
 						//add
 						ALUControl = 3'b010;
