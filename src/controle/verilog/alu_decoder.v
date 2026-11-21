@@ -1,11 +1,11 @@
 module alu_decoder(
-input reg [5:0] funct,
-input reg [1:0] ALUop,
+input wire [5:0] funct,
+input wire [1:0] ALUop,
 output reg [2:0] ALUControl
 );
 
 	always @(*) begin		
-		priority casez(ALUop)
+		casez(ALUop)
 			2'b00: begin
 				//add
 				ALUControl = 3'b010;
