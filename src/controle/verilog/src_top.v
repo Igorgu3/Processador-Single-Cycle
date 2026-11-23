@@ -1,23 +1,22 @@
 module src_top (
 	input wire [5:0] Opcode,
 	input wire [5:0] funct,
-	output reg MemtoReg,
-	output reg MemWrite,
-	output reg Branch,
-	output reg [2:0] ALUControl,
-	output reg ALUSrc,
-	output reg RegDst,
-	output reg RegWrite,
-	output reg [2:0] ALUControl
+	output wire [1:0] ALUop,
+	output wire MemtoReg,
+	output wire MemWrite,
+	output wire Branch,
+	output wire [2:0] ALUControl,
+	output wire ALUSrc,
+	output wire RegDst,
+	output wire RegWrite
 );
 
-	control_unit u_control (
-		.Opcode(.Opcode),
-		.funct(funct),
+	main_decoder u_control (
+		.Opcode(Opcode),
+		.ALUop(ALUop),
 		.MemtoReg(MemtoReg),
 		.MemWrite(MemWrite),
 		.Branch(Branch),
-		.ALUControl(ALUControl),
 		.ALUSrc(ALUSrc),
 		.RegDst(RegDst),
 		.RegWrite(RegWrite)
@@ -25,7 +24,8 @@ module src_top (
 
 	alu_decoder u_decoder (
 		.funct(funct),
-		.ALUCtrl(ALUCtrl)
+		.ALUop(ALUop),
+		.ALUControl(ALUControl)
 	);
 
 endmodule

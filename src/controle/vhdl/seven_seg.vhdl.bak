@@ -1,0 +1,35 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity seven_seg is
+    port (
+        hex      : in  std_logic_vector(3 downto 0);
+        segments : out std_logic_vector(7 downto 0)
+    );
+end entity seven_seg;
+
+architecture rtl of seven_seg is
+begin
+    process (hex)
+    begin
+        case hex is
+            when "0000" => segments <= "11000000"; -- 0xC0
+            when "0001" => segments <= "11111001"; -- 0xF9
+            when "0010" => segments <= "10100100"; -- 0xA4
+            when "0011" => segments <= "10110000"; -- 0xB0
+            when "0100" => segments <= "10011001"; -- 0x99
+            when "0101" => segments <= "10010010"; -- 0x92
+            when "0110" => segments <= "10000010"; -- 0x82
+            when "0111" => segments <= "11111000"; -- 0xF8
+            when "1000" => segments <= "10000000"; -- 0x80
+            when "1001" => segments <= "10010000"; -- 0x90
+            when "1010" => segments <= "10001000"; -- 0x88
+            when "1011" => segments <= "10000011"; -- 0x83
+            when "1100" => segments <= "11000110"; -- 0xC6
+            when "1101" => segments <= "10100001"; -- 0xA1
+            when "1110" => segments <= "10000110"; -- 0x86
+            when "1111" => segments <= "10001110"; -- 0x8E
+            when others => segments <= "11111111"; -- 0xFF - fully clear
+        end case;
+    end process;
+end architecture rtl;

@@ -13,17 +13,18 @@ verilator \
 	--cc \
 	--exe \
 	--build \
-	--trace-fst \
+	--trace \
 	-Wall \
+	--Mdir ${BUILD_DIR} \
 	--x-assign unique \
 	--x-initial unique \
 	--top-module ${TOP} \
 	-Irtl \
-	-I../src_top.v \
+	../src_top.v \
 	../main_decoder.v \
 	../alu_decoder.v \
+	testbench_stim.cpp \
 	-o sim_${TOP} \
-	--Mdir ${BUILD_DIR}
 
 echo "			SIMULATION...			"
 

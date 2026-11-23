@@ -1,11 +1,9 @@
 module main_decoder(
 input wire [5:0] Opcode,
-input wire [5:0] funct,
 output reg [1:0] ALUop,
 output reg MemtoReg,
 output reg MemWrite,
 output reg Branch,
-output reg [2:0] ALUControl,
 output reg ALUSrc,
 output reg RegDst,
 output reg RegWrite
@@ -16,13 +14,12 @@ always @(*) begin
 	MemtoReg = 1'b0;	//Indica se escreve no registrador
 	MemWrite = 1'b0;	//flag de escrita na memória
 	Branch = 1'b0;		//permanece 0 até o tipo beq
-	ALUControl = 1'b0;
 	ALUSrc = 1'b0;		//indica se ALU recebe RD2 ou SignImm
 	RegDst = 1'b0;		//destino é rt
 	RegWrite = 1'b0;	//flag de escrita no registrador
 	ALUop = 2'b00;
 	
-	case(opcode)
+	case(Opcode)
 		// tipo R
 		6'b000000: begin
 			RegDst = 1'b1;		//destino é rd
