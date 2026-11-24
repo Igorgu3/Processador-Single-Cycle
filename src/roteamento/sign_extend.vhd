@@ -10,5 +10,5 @@ end sign_extend;
 
 architecture Behavioral of sign_extend is
 begin
-    imm_out <= (31 downto 16 => imm_in(15)) & imm_in;
+    imm_out <= (31 downto 16 => imm_in(15)) & imm_in; -- Preenche os 16 bits mais significativos com o bit de sinal (imm_in(15)) e concatena com os 16 bits menos significativos (imm_in)
 end Behavioral;
