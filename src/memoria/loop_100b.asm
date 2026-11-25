@@ -4,7 +4,7 @@
 
     # ATENCAO: Para testar rapido no MARS, mude os 3 numeros abaixo para 2, 3 e 4!
     # Para gerar o arquivo final da FPGA (100 bilhoes), deixe 2000, 1000 e 10000.
-    addi $t0, $zero, 2000          # Loop 1 (externo)
+    addi $t0, $zero, 2000         # Loop 1 (externo)
 
 loop_externo:
     addi $t1, $zero, 1000          # Loop 2 (meio)

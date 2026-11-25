@@ -3,11 +3,20 @@ use ieee.std_logic_1164.all;
 
 entity processador is
     port(
-        clk     : in  std_logic;                      -- Clock do sistema
-        rst     : in  std_logic;                      -- Reset do PC
-        -- Saidas de observacao (evitam otimizacao no Quartus e ajudam no debug/FPGA)
-        pc_out  : out std_logic_vector(31 downto 0);  -- Endereco atual da instrucao (PC)
-        alu_out : out std_logic_vector(31 downto 0)   -- Resultado atual da ULA (endereco da RAM)
+        clk            : in  std_logic;
+        rst            : in  std_logic;
+        -- Saidas de observacao para simulacao e FPGA
+        pc_out         : out std_logic_vector(31 downto 0);
+        alu_out        : out std_logic_vector(31 downto 0);
+        writedata_out  : out std_logic_vector(31 downto 0);
+        -- Saidas dos sinais da controladora para os LEDs
+        regwrite_out   : out std_logic;
+        regdst_out     : out std_logic;
+        alusrc_out     : out std_logic;
+        branch_out     : out std_logic;
+        memwrite_out   : out std_logic;
+        memtoreg_out   : out std_logic;
+        alucontrol_out : out std_logic_vector(2 downto 0)
     );
 end entity;
 
@@ -137,7 +146,15 @@ begin
         );
 
     -- Conexao dos sinais internos as saidas externas do top-level
-    pc_out  <= s_pc;
-    alu_out <= s_aluout;
+    pc_out         <= s_pc;
+    alu_out        <= s_aluout;
+    writedata_out  <= s_writedata;
+    regwrite_out   <= s_regwrite;
+    regdst_out     <= s_regdst;
+    alusrc_out     <= s_alusrc;
+    branch_out     <= s_branch;
+    memwrite_out   <= s_memwrite;
+    memtoreg_out   <= s_memtoreg;
+    alucontrol_out <= s_alucontrol;
 
 end architecture;
