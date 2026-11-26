@@ -179,11 +179,14 @@ begin
         end procedure;
 
     begin
-        -- Reset por 1 ciclo e solta na borda de descida
+        -- Reset do PC (assincrono) e solto ANTES da primeira borda de subida.
+        -- Obs.: o banco de registradores nao tem reset; se o reset ficasse ativo
+        -- durante uma borda, o PC ficaria em 0 mas a instrucao do endereco 0
+        -- seria executada nessa borda (no programa atual isso e inofensivo).
         rst <= '1';
-        wait until falling_edge(clk);
-        rst <= '0';
         wait for T_CLK / 4;
+        rst <= '0';
+        wait for 1 ns;
 
         write(l, string'("=== tb_processador: ")); write(l, N_CICLOS);
         write(l, string'(" ciclos, programa ") & ARQ_PROGRAMA & " ===");
