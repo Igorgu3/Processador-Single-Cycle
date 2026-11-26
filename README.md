@@ -1,35 +1,72 @@
 # MIPS Single-Cycle Processor - FPGA
 
-Implementação RTL (Register-Transfer Level) de um processador MIPS single-cycle em VHDL[cite: 1]. Este projeto foi desenvolvido como trabalho final da disciplina de Laboratório de Sistemas Digitais da Universidade Federal de Minas Gerais (UFMG)[cite: 1].
+Implementação RTL (Register-Transfer Level) de um processador MIPS single-cycle em VHDL. Este projeto foi desenvolvido como trabalho final da disciplina de Laboratório de Sistemas Digitais da Universidade Federal de Minas Gerais (UFMG).
 
-O objetivo principal deste repositório é descrever em hardware um processador capaz de rodar "ao vivo" no FPGA, executando um programa em Assembly com loops estruturados para atingir a marca de **100 bilhões de instruções** processadas[cite: 1].
+O objetivo é descrever em hardware um processador capaz de rodar "ao vivo" na FPGA, executando um programa em Assembly com loops aninhados que soma **100 bilhões de instruções** processadas.
 
 ## 💻 Arquitetura e Instruções Suportadas
-O processador e seu sistema de controle foram projetados para suportar instruções base do MIPS[cite: 1], com validação obrigatória das seguintes operações[cite: 1]:
-* `Branch` (Desvios condicionais)[cite: 1]
-* `Jal` (Jump and Link)[cite: 1]
-* `Lw` (Load Word)[cite: 1]
-* `Sw` (Store Word)[cite: 1]
+O caminho de dados e a unidade de controle seguem o diagrama do enunciado (processador single-cycle com Decodificador Principal + Decodificador da ULA). Os nomes dos fios no VHDL são os mesmos do diagrama (`PC`, `PCPlus4`, `PCBranch`, `PCSrc`, `Instr`, `SignImm`, `WriteReg`, `SrcA`, `SrcB`, `ALUResult`, `Zero`, `WriteData`, `ReadData`, `Result`).
 
-Para o desenvolvimento ágil, a microarquitetura foi dividida em blocos hierárquicos:
-* **Datapath e Unidade de Controle:** Integração central e decodificação de Opcode/Funct.
-* **Memórias e Banco de Registradores:** Instruction Memory (inicializada estaticamente com o código de máquina), Register File (32 registradores) e Data Memory.
-* **Gerenciamento do PC e ULA:** Program Counter, Somadores (PC+4 e Branch) e Unidade Lógica e Aritmética.
-* **Extensões e Roteamento:** Sign Extend, Shift Left 2 e Multiplexadores de barramento.
+Com a liberação do professor para escolher o conjunto de instruções, o grupo implementou as instruções básicas abaixo (**`jal` não foi implementado**):
+
+| Instrução | Tipo | Uso no programa |
+|---|---|---|
+| `addi` | I | inicializar e decrementar os contadores dos loops |
+| `lw`   | I | ler da memória de dados |
+| `sw`   | I | escrever na memória de dados |
+| `beq`  | I | desvios dos loops (tomado e não tomado) |
+
+A controladora também decodifica as instruções tipo R da tabela do enunciado (`add`, `sub`, `and`, `or`, `slt` e `mult` com funct `101011`).
+
+## 🧮 Programa de 100 bilhões de instruções
+O programa está em `src/memoria/loop_100b.asm` (código de máquina em `src/memoria/instrucoes.txt`). São três loops aninhados:
+
+* loop externo: 2.000 voltas (`$t0`)
+* loop do meio: 1.000 voltas (`$t1`)
+* loop interno: 10.000 voltas (`$t2`), cada uma com `sw`, `lw`, `addi` e `beq`
+
+No total são **100.006.006.001 instruções** (~1,0 × 10¹¹), cerca de 33 minutos a 50 MHz. No fim, o PC fica preso em `0x3C` (`beq $zero, $zero, fim_programa`).
+
+## 📁 Estrutura
+| Pasta | Conteúdo |
+|---|---|
+| `src/alu_pc/` | `pc_register`, `adder_pc4`, `adder_branch`, `alu` |
+| `src/roteamento/` | `sign_extend`, `shift_left_2`, `mux2x1_32bits` (genérico, 32 ou 5 bits) |
+| `src/memoria/` | `instruction_memory`, `data_memory`, `register_file`, programa (`.asm` e `instrucoes.txt`) |
+| `src/controle/vhdl/` | Unidade de controle: `src_top` (= `main_decoder` + `alu_decoder`) |
+| `src/top/` | `mips_datapath` (caminho de dados) |
+| `src/processador/` | `processador` (datapath + controladora + memórias) |
+| `src/fpga/` | `fpga_top` (top-level da placa) e `hex_to_7seg` |
+| `src/testbenchs/` | Testbenches, incluindo o `tb_processador` do processador completo |
+
+Cada arquivo `.vhd` tem o mesmo nome da entidade que ele contém.
 
 ## 🛠️ Tecnologias e Ferramentas
-* **Descrição de Hardware:** VHDL[cite: 1]
-* **Compilação Assembly:** MARS (MIPS Assembler and Runtime Simulator)[cite: 1]
-* **Síntese e Simulação:** [Inserir Intel Quartus ou Xilinx Vivado]
-* **Hardware Alvo:** [Inserir o modelo da sua placa FPGA]
+* **Descrição de Hardware:** VHDL
+* **Compilação Assembly:** MARS (MIPS Assembler and Runtime Simulator)
+* **Simulação:** GHDL (EDA Playground)
+* **Síntese:** Intel Quartus Prime
+* **Hardware Alvo:** Terasic DE10-Lite (Intel MAX 10, clock de 50 MHz)
 
-## 🚀 Como Executar
-1. Clone este repositório: `git clone <url-do-repo>`
-2. Abra o projeto na sua IDE de desenvolvimento FPGA (Quartus/Vivado).
-3. O código fonte dos blocos está localizado na pasta `src/`.
-4. Os testes unitários (Testbenches) estão na pasta `tb/`.
-5. O arquivo com o código de máquina gerado pelo MARS para inicializar a Memória de Instruções está no diretório `mem/`.
-6. Compile o projeto e grave o *bitstream* na placa. 
+## 🧪 Simulação
+1. Adicione todos os `.vhd` de `src/` e o arquivo `src/memoria/instrucoes.txt` na mesma pasta do simulador.
+2. Use `tb_processador` como top-level da simulação.
+3. O testbench tem um modelo de referência próprio e compara a cada ciclo o PC, a saída da ULA, o `WriteData` e todos os sinais da controladora. No fim ele mostra um resumo e `SUCESSO` ou `FALHA`.
+4. Toda escrita na memória de dados (`sw`) também fica registrada em `saida_memoria.txt`.
+
+## 🚀 Executando na FPGA
+1. Crie um projeto no Quartus com todos os `.vhd` de `src/` (sem os testbenches) e defina `fpga_top` como *top-level entity*.
+2. Copie `src/memoria/instrucoes.txt` para a pasta do projeto do Quartus (a memória de instruções lê esse arquivo na síntese).
+3. Compile e grave o *bitstream* na placa.
+
+Interface na placa:
+* `KEY(0)`: reset
+* `SW(0)`: `0` = clock lento (1 Hz), `1` = 50 MHz
+* `LEDR(0..5)`: RegWrite, RegDst, ALUSrc, Branch, MemWrite, MemtoReg
+* `LEDR(8..6)`: ALUControl
+* `LEDR(9)`: aceso quando o programa terminou (PC = `0x3C`)
+* `HEX5..HEX4`: PC (byte menos significativo)
+* `HEX3..HEX0`: último valor de `$t2` gravado na memória pelo `sw`
 
 ## 👥 Autores
 * **Igor Araujo** - Memórias de Instrução/Dados e Banco de Registradores

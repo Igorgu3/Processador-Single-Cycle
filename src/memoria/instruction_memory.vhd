@@ -8,8 +8,8 @@ use ieee.std_logic_textio.all; -- Adiciona a função hread() para ler valores e
 -- Entidade: define as entradas e saídas (pinos) do bloco de Memória de Instruções
 entity instruction_memory is
     port (
-        PC    : in  std_logic_vector(31 downto 0); -- Endereço da instrução atual vindo do PC
-        INSTR : out std_logic_vector(31 downto 0)  -- Instrução de 32 bits entregue ao processador
+        A  : in  std_logic_vector(31 downto 0); -- Endereço da instrução atual vindo do PC
+        RD : out std_logic_vector(31 downto 0)  -- Instrução de 32 bits (Instr) entregue ao processador
     );
 end entity;
 
@@ -51,6 +51,6 @@ architecture rtl of instruction_memory is
     constant rom : rom_type := init_rom("instrucoes.txt");
 
 begin
-    INSTR <= rom(to_integer(unsigned(PC(7 downto 2))));
+    RD <= rom(to_integer(unsigned(A(7 downto 2))));
 
 end architecture;

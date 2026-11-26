@@ -1,0 +1,27 @@
+# Quartus: arquivos gerados na compilacao
+db/
+incremental_db/
+output_files/
+simulation/
+greybox_tmp/
+*.qws
+*.bak
+c5_pin_model_dump.txt
+PLLJ_PLLSPE_INFO.txt
+
+# ModelSim / Questa
+work/
+transcript
+*.wlf
+modelsim.ini
+vsim.dbg
+
+# Arquivos gerados pela simulacao do processador
+saida_memoria.txt
+/instrucoes.txt
+
+# GHDL / Verilator
+*.cf
+*.o
+*.vcd
+build/
