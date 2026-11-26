@@ -5,7 +5,8 @@ entity fpga_top is
     port(
         MAX10_CLK1_50 : in  std_logic;
         KEY           : in  std_logic_vector(1 downto 0); -- KEY(0) = Reset
-        SW            : in  std_logic_vector(9 downto 0); -- SW(0)  = 0: 1Hz | 1: 50MHz
+        SW            : in  std_logic_vector(9 downto 0); -- SW(0) = 0: 1Hz | 1: 50MHz
+                                                          -- SW(1) = 0: HEX3-0 = $t2 | 1: $t0
         LEDR          : out std_logic_vector(9 downto 0);
         HEX0          : out std_logic_vector(6 downto 0);
         HEX1          : out std_logic_vector(6 downto 0);
@@ -23,6 +24,7 @@ architecture structural of fpga_top is
             clk            : in  std_logic;
             rst            : in  std_logic;
             pc_out         : out std_logic_vector(31 downto 0);
+            instr_out      : out std_logic_vector(31 downto 0);
             alu_out        : out std_logic_vector(31 downto 0);
             writedata_out  : out std_logic_vector(31 downto 0);
             regwrite_out   : out std_logic;
@@ -51,6 +53,7 @@ architecture structural of fpga_top is
 
     -- Sinais vindos do processador
     signal s_pc         : std_logic_vector(31 downto 0);
+    signal s_instr      : std_logic_vector(31 downto 0);
     signal s_alu        : std_logic_vector(31 downto 0);
     signal s_writedata  : std_logic_vector(31 downto 0);
     signal s_regwrite   : std_logic;
@@ -63,6 +66,12 @@ architecture structural of fpga_top is
 
     -- Registrador auxiliar para manter o ultimo valor de $t2 estavel nos displays
     signal s_t2_display : std_logic_vector(15 downto 0) := (others => '0');
+
+    -- Ultimo valor gravado no registrador $t0 (contador do loop externo).
+    -- Em 50 MHz ele diminui 1 vez por segundo: 07D0 (2000) -> 0000 em ~33 min.
+    signal s_t0_display : std_logic_vector(15 downto 0) := (others => '0');
+    signal s_writereg   : std_logic_vector(4 downto 0);   -- registrador destino
+    signal s_hex        : std_logic_vector(15 downto 0);  -- valor mostrado em HEX3-0
 
 begin
 
@@ -91,6 +100,7 @@ begin
             clk            => clk_proc,
             rst            => s_rst,
             pc_out         => s_pc,
+            instr_out      => s_instr,
             alu_out        => s_alu,
             writedata_out  => s_writedata,
             regwrite_out   => s_regwrite,
@@ -102,17 +112,31 @@ begin
             alucontrol_out => s_alucontrol
         );
 
-    -- 3. Captura o valor de $t2 toda vez que o programa executa SW na RAM
+    -- 3. Registrador destino: a mesma escolha do Mux RegDst (rd se tipo R, rt se tipo I)
+    s_writereg <= s_instr(15 downto 11) when s_regdst = '1' else s_instr(20 downto 16);
+
+    -- Captura os valores mostrados nos displays
+    --   $t2: toda vez que o programa executa SW na RAM (WriteData)
+    --   $t0: toda vez que o processador grava no registrador 8 ($t0). O valor
+    --        gravado e a saida da ULA (vale para addi e tipo R, que sao as
+    --        instrucoes que escrevem em $t0 neste programa)
     process(clk_proc, s_rst)
     begin
         if s_rst = '1' then
             s_t2_display <= (others => '0');
+            s_t0_display <= (others => '0');
         elsif rising_edge(clk_proc) then
             if s_memwrite = '1' then
                 s_t2_display <= s_writedata(15 downto 0);
             end if;
+            if s_regwrite = '1' and s_writereg = "01000" then
+                s_t0_display <= s_alu(15 downto 0);
+            end if;
         end if;
     end process;
+
+    -- SW(1) escolhe o que vai para HEX3-0
+    s_hex <= s_t0_display when SW(1) = '1' else s_t2_display;
 
     -- 4. Mapeamento dos 10 LEDs da DE10-Lite
     LEDR(0)          <= s_regwrite;
@@ -124,12 +148,12 @@ begin
     LEDR(8 downto 6) <= s_alucontrol;
     LEDR(9)          <= '1' when s_pc = x"0000003C" else '0'; -- Fim do programa
 
-    -- 5. Displays de 7 segmentos: [HEX5 HEX4] = PC | [HEX3 HEX2 HEX1 HEX0] = $t2
-    D5 : hex_to_7seg port map(hex => s_pc(7 downto 4),          seg => HEX5);
-    D4 : hex_to_7seg port map(hex => s_pc(3 downto 0),          seg => HEX4);
-    D3 : hex_to_7seg port map(hex => s_t2_display(15 downto 12), seg => HEX3);
-    D2 : hex_to_7seg port map(hex => s_t2_display(11 downto 8),  seg => HEX2);
-    D1 : hex_to_7seg port map(hex => s_t2_display(7 downto 4),   seg => HEX1);
-    D0 : hex_to_7seg port map(hex => s_t2_display(3 downto 0),   seg => HEX0);
+    -- 5. Displays de 7 segmentos: [HEX5 HEX4] = PC | [HEX3 HEX2 HEX1 HEX0] = $t2 ou $t0 (SW1)
+    D5 : hex_to_7seg port map(hex => s_pc(7 downto 4),   seg => HEX5);
+    D4 : hex_to_7seg port map(hex => s_pc(3 downto 0),   seg => HEX4);
+    D3 : hex_to_7seg port map(hex => s_hex(15 downto 12), seg => HEX3);
+    D2 : hex_to_7seg port map(hex => s_hex(11 downto 8),  seg => HEX2);
+    D1 : hex_to_7seg port map(hex => s_hex(7 downto 4),   seg => HEX1);
+    D0 : hex_to_7seg port map(hex => s_hex(3 downto 0),   seg => HEX0);
 
 end architecture;

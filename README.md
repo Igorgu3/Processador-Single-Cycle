@@ -62,11 +62,16 @@ Cada arquivo `.vhd` tem o mesmo nome da entidade que ele contém.
 Interface na placa:
 * `KEY(0)`: reset
 * `SW(0)`: `0` = clock lento (1 Hz), `1` = 50 MHz
+* `SW(1)`: escolhe o que aparece em `HEX3..HEX0`: `0` = `$t2`, `1` = `$t0`
 * `LEDR(0..5)`: RegWrite, RegDst, ALUSrc, Branch, MemWrite, MemtoReg
 * `LEDR(8..6)`: ALUControl
 * `LEDR(9)`: aceso quando o programa terminou (PC = `0x3C`)
 * `HEX5..HEX4`: PC (byte menos significativo)
-* `HEX3..HEX0`: último valor de `$t2` gravado na memória pelo `sw`
+* `HEX3..HEX0` (em hexadecimal):
+  * `SW(1) = 0`: último valor de `$t2` gravado na memória pelo `sw`. Bom para acompanhar em 1 Hz (muda a cada 5 s: `2710`, `270F`, …).
+  * `SW(1) = 1`: último valor gravado no registrador `$t0` (contador do loop externo). Bom para acompanhar em 50 MHz: diminui 1 por segundo, de `07D0` (2000) até `0000`, em ~33 minutos.
+
+Para o `$t0`, o processador expõe a instrução atual (`instr_out`). O `fpga_top` calcula o registrador destino (a mesma escolha do mux RegDst) e, sempre que há `RegWrite` no registrador 8, guarda a saída da ULA.
 
 ## 👥 Autores
 * **Igor Araujo** - Memórias de Instrução/Dados e Banco de Registradores

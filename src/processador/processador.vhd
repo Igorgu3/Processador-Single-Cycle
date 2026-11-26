@@ -7,6 +7,7 @@ entity processador is
         rst            : in  std_logic;
         -- Saidas de observacao para simulacao e FPGA
         pc_out         : out std_logic_vector(31 downto 0);
+        instr_out      : out std_logic_vector(31 downto 0); -- Instr (saida RD da ROM)
         alu_out        : out std_logic_vector(31 downto 0);
         writedata_out  : out std_logic_vector(31 downto 0);
         -- Saidas dos sinais da controladora para os LEDs
@@ -149,6 +150,7 @@ begin
 
     -- Conexao dos sinais internos as saidas externas do top-level
     pc_out         <= PC;
+    instr_out      <= Instr;
     alu_out        <= ALUResult;
     writedata_out  <= WriteData;
     regwrite_out   <= RegWrite;

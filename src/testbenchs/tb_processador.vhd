@@ -4,7 +4,7 @@
 -- O testbench tem um MODELO DE REFERENCIA proprio (independente do VHDL do
 -- grupo): ele le o mesmo "instrucoes.txt", executa cada instrucao em software
 -- e, a cada ciclo de clock, compara com o processador:
---   * PC (pc_out)
+--   * PC (pc_out) e instrucao lida da ROM (instr_out)
 --   * resultado da ULA (alu_out)
 --   * dado escrito na RAM (writedata_out = RD2)
 --   * todos os sinais da controladora (RegWrite, RegDst, ALUSrc, Branch,
@@ -47,6 +47,7 @@ architecture sim of tb_processador is
 
     -- Saidas do processador
     signal pc_out         : std_logic_vector(31 downto 0);
+    signal instr_out      : std_logic_vector(31 downto 0);
     signal alu_out        : std_logic_vector(31 downto 0);
     signal writedata_out  : std_logic_vector(31 downto 0);
     signal regwrite_out   : std_logic;
@@ -98,6 +99,7 @@ begin
             clk            => clk,
             rst            => rst,
             pc_out         => pc_out,
+            instr_out      => instr_out,
             alu_out        => alu_out,
             writedata_out  => writedata_out,
             regwrite_out   => regwrite_out,
@@ -269,6 +271,7 @@ begin
             -- 2. Compara com o processador (meio do ciclo, tudo estavel)
             ---------------------------------------------------------------
             confere("PC",         pc_out,         std_logic_vector(pc));
+            confere("Instr",      instr_out,      instr);
             confere("ALUResult",  alu_out,        res);
             confere("WriteData",  writedata_out,  b);
             confere("RegWrite",   regwrite_out,   e_regwrite);
