@@ -252,7 +252,7 @@ begin
                     e_branch := '1'; e_alucontrol := "110";
                     res := std_logic_vector(signed(a) - signed(b));
                     if res = x"00000000" then
-                        pc_prox := pc4 + unsigned(imm(29 downto 0) & "00");
+                        pc_prox := pc4 + shift_left(unsigned(imm), 2);  -- PCPlus4 + (SignImm << 2)
                         n_beq_tom := n_beq_tom + 1;
                     else
                         n_beq_ntom := n_beq_ntom + 1;
