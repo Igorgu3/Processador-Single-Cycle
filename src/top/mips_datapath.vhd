@@ -2,53 +2,71 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+-- =============================================================================
+-- Caminho de dados (datapath) do MIPS single-cycle.
+-- Os nomes de portas e fios seguem o diagrama do enunciado do projeto
+-- (PC, PC', PCPlus4, PCBranch, PCSrc, Instr, SignImm, WriteReg, SrcA, SrcB,
+--  ALUResult, Zero, WriteData, ReadData, Result).
+--
+-- Obs.: VHDL nao diferencia maiusculas/minusculas e nao deixa LER uma porta
+-- "out". Por isso os tres fios que saem para as memorias E tambem sao usados
+-- aqui dentro (PC, ALUResult e WriteData) tem uma copia interna com sufixo _i.
+-- =============================================================================
 entity mips_datapath is
     port(
         clk        : in  std_logic;                      -- Clock do sistema
         rst        : in  std_logic;                      -- Reset do PC
         -- Sinais de controle vindos da Controladora
-        memtoreg   : in  std_logic;                      -- 0: ALUResult | 1: ReadData (RAM)
-        branch     : in  std_logic;                      -- Habilita desvio condicional (BEQ)
-        alucontrol : in  std_logic_vector(2 downto 0);   -- Operacao da ULA (3 bits)
-        alusrc     : in  std_logic;                      -- 0: RD2 | 1: SignImm
-        regdst     : in  std_logic;                      -- 0: rt (20:16) | 1: rd (15:11)
-        regwrite   : in  std_logic;                      -- Habilita escrita no Banco de Registradores
+        MemtoReg   : in  std_logic;                      -- 0: ALUResult | 1: ReadData (RAM)
+        Branch     : in  std_logic;                      -- Habilita desvio condicional (BEQ)
+        ALUControl : in  std_logic_vector(2 downto 0);   -- Operacao da ULA (3 bits)
+        ALUSrc     : in  std_logic;                      -- 0: RD2 | 1: SignImm
+        RegDst     : in  std_logic;                      -- 0: rt (20:16) | 1: rd (15:11)
+        RegWrite   : in  std_logic;                      -- Habilita escrita no Banco de Registradores
         -- Interface com a Memoria de Instrucoes (no processador.vhd)
-        instr      : in  std_logic_vector(31 downto 0);  -- Instrucao lida da ROM
-        pc         : out std_logic_vector(31 downto 0);  -- Endereco atual enviado para a ROM
+        Instr      : in  std_logic_vector(31 downto 0);  -- Instrucao lida da ROM (RD)
+        PC         : out std_logic_vector(31 downto 0);  -- Endereco atual enviado para a ROM (A)
         -- Interface com a Memoria de Dados (no processador.vhd)
-        readdata   : in  std_logic_vector(31 downto 0);  -- Dado lido da RAM (LW)
-        aluout     : out std_logic_vector(31 downto 0);  -- Saida da ULA (endereco A da RAM)
-        writedata  : out std_logic_vector(31 downto 0)   -- Dado RD2 enviado para WD da RAM (SW)
+        ReadData   : in  std_logic_vector(31 downto 0);  -- Dado lido da RAM (RD) - LW
+        ALUResult  : out std_logic_vector(31 downto 0);  -- Saida da ULA (endereco A da RAM)
+        WriteData  : out std_logic_vector(31 downto 0)   -- RD2 enviado para WD da RAM - SW
     );
 end entity;
 
 architecture structural of mips_datapath is
 
     -- =========================================================================
-    -- DECLARACAO DOS COMPONENTES (ajustar nomes/portas conforme arquivos do grupo)
+    -- DECLARACAO DOS COMPONENTES (portas iguais as entidades dos arquivos do grupo)
     -- =========================================================================
 
     -- Registrador do Program Counter (PC)
     component pc_register is
         port(
-            clk    : in  std_logic;
-            rst    : in  std_logic;
-            pc_in  : in  std_logic_vector(31 downto 0);
-            pc_out : out std_logic_vector(31 downto 0)
+            CLK     : in  std_logic;
+            reset   : in  std_logic;
+            PC_next : in  std_logic_vector(31 downto 0);
+            PC      : out std_logic_vector(31 downto 0)
         );
     end component;
 
-    -- Somador de 32 bits (reutilizado para PC+4 e para PCBranch)
-    component adder_32 is
+    -- Somador dedicado PC + 4
+    component adder_pc4 is
         port(
-            a : in  std_logic_vector(31 downto 0);
-            b : in  std_logic_vector(31 downto 0);
-            y : out std_logic_vector(31 downto 0)
+            PC      : in  std_logic_vector(31 downto 0);
+            PCPlus4 : out std_logic_vector(31 downto 0)
         );
     end component;
 
-    -- Multiplexador 2x1 generico (ja validado - usado em 5 bits para RegDst e 32 bits nos demais)
+    -- Somador do endereco de desvio: PCBranch = PCPlus4 + (SignImm << 2)
+    component adder_branch is
+        port(
+            PCPlus4   : in  std_logic_vector(31 downto 0);
+            SignImmSh : in  std_logic_vector(31 downto 0);
+            PCBranch  : out std_logic_vector(31 downto 0)
+        );
+    end component;
+
+    -- Multiplexador 2x1 generico (usado em 5 bits para RegDst e 32 bits nos demais)
     component mux2x1_32bits is
         generic(
             WIDTH : integer := 32
@@ -61,7 +79,7 @@ architecture structural of mips_datapath is
         );
     end component;
 
-    -- Banco de Registradores (ja validado)
+    -- Banco de Registradores
     component register_file is
         port(
             CLK : in  std_logic;
@@ -75,7 +93,7 @@ architecture structural of mips_datapath is
         );
     end component;
 
-    -- Extensor de Sinal 16 -> 32 bits (ja validado)
+    -- Extensor de Sinal 16 -> 32 bits
     component sign_extend is
         port(
             imm_in  : in  std_logic_vector(15 downto 0);
@@ -83,109 +101,108 @@ architecture structural of mips_datapath is
         );
     end component;
 
-    -- Deslocador de 2 bits a esquerda (multiplica imediato de branch por 4)
+    -- Deslocador de 2 bits a esquerda (<<2: multiplica imediato de branch por 4)
     component shift_left_2 is
         port(
-            a : in  std_logic_vector(31 downto 0);
-            y : out std_logic_vector(31 downto 0)
+            data_in  : in  std_logic_vector(31 downto 0);
+            data_out : out std_logic_vector(31 downto 0)
         );
     end component;
 
     -- Unidade Logica e Aritmetica (ULA)
     component alu is
         port(
-            src_a      : in  std_logic_vector(31 downto 0);
-            src_b      : in  std_logic_vector(31 downto 0);
-            alucontrol : in  std_logic_vector(2 downto 0);
-            alu_result : out std_logic_vector(31 downto 0);
-            zero       : out std_logic
+            SrcA       : in  std_logic_vector(31 downto 0);
+            SrcB       : in  std_logic_vector(31 downto 0);
+            ALUControl : in  std_logic_vector(2 downto 0);
+            ALUResult  : out std_logic_vector(31 downto 0);
+            Zero       : out std_logic
         );
     end component;
 
     -- =========================================================================
-    -- SINAIS INTERNOS (FIOS DO CAMINHO DE DADOS)
+    -- FIOS INTERNOS (mesmos nomes do diagrama)
     -- =========================================================================
 
-    -- Fatiamento explicito dos campos da instrucao (facilita leitura e debug)
-    signal rs        : std_logic_vector(4 downto 0);   -- instr(25 downto 21)
-    signal rt        : std_logic_vector(4 downto 0);   -- instr(20 downto 16)
-    signal rd        : std_logic_vector(4 downto 0);   -- instr(15 downto 11)
-    signal imm16     : std_logic_vector(15 downto 0);  -- instr(15 downto 0)
+    -- Campos da instrucao
+    signal rs        : std_logic_vector(4 downto 0);   -- Instr(25:21) -> A1
+    signal rt        : std_logic_vector(4 downto 0);   -- Instr(20:16) -> A2 e Mux RegDst (0)
+    signal rd        : std_logic_vector(4 downto 0);   -- Instr(15:11) -> Mux RegDst (1)
+    signal imm16     : std_logic_vector(15 downto 0);  -- Instr(15:0)  -> Sign Extend
 
-    -- Sinais do fluxo do PC e Branch
-    signal s_pc_next          : std_logic_vector(31 downto 0); -- PC'
-    signal s_pc_current       : std_logic_vector(31 downto 0); -- PC
-    signal s_pc_plus4         : std_logic_vector(31 downto 0); -- PCPlus4
-    signal s_pc_branch        : std_logic_vector(31 downto 0); -- PCBranch
-    signal s_sign_imm         : std_logic_vector(31 downto 0); -- SignImm
-    signal s_sign_imm_shifted : std_logic_vector(31 downto 0); -- SignImm << 2
-    signal s_pcsrc            : std_logic;                     -- Branch AND Zero
+    -- Fluxo do PC e Branch
+    signal PCNext    : std_logic_vector(31 downto 0);  -- PC' (entrada do registrador do PC)
+    signal PC_i      : std_logic_vector(31 downto 0);  -- PC  (copia interna da porta PC)
+    signal PCPlus4   : std_logic_vector(31 downto 0);  -- PCPlus4
+    signal PCBranch  : std_logic_vector(31 downto 0);  -- PCBranch
+    signal SignImm   : std_logic_vector(31 downto 0);  -- SignImm
+    signal SignImmSh : std_logic_vector(31 downto 0);  -- SignImm << 2
+    signal PCSrc     : std_logic;                      -- Branch AND Zero
 
-    -- Sinais do Banco de Registradores e ULA
-    signal s_write_reg  : std_logic_vector(4 downto 0);        -- WriteReg (A3)
-    signal s_rd1        : std_logic_vector(31 downto 0);       -- SrcA
-    signal s_rd2        : std_logic_vector(31 downto 0);       -- WriteData / entrada 0 do Mux ALUSrc
-    signal s_src_b      : std_logic_vector(31 downto 0);       -- SrcB
-    signal s_alu_result : std_logic_vector(31 downto 0);       -- ALUResult
-    signal s_zero       : std_logic;                           -- Flag Zero da ULA
-    signal s_result     : std_logic_vector(31 downto 0);       -- Result (WD3)
+    -- Banco de Registradores e ULA
+    signal WriteReg    : std_logic_vector(4 downto 0);  -- WriteReg (A3)
+    signal SrcA        : std_logic_vector(31 downto 0); -- SrcA (RD1)
+    signal WriteData_i : std_logic_vector(31 downto 0); -- WriteData (RD2, copia interna)
+    signal SrcB        : std_logic_vector(31 downto 0); -- SrcB
+    signal ALUResult_i : std_logic_vector(31 downto 0); -- ALUResult (copia interna)
+    signal Zero        : std_logic;                     -- Flag Zero da ULA
+    signal Result      : std_logic_vector(31 downto 0); -- Result (WD3)
 
 begin
 
     -- =========================================================================
-    -- 1. DIVISAO DOS CAMPOS DA INSTRUCAO (op e funct vao direto na Controladora)
+    -- 1. DIVISAO DOS CAMPOS DA INSTRUCAO (Op e Funct vao direto na Controladora)
     -- =========================================================================
-    rs    <= instr(25 downto 21); -- Registrador fonte 1 (A1)
-    rt    <= instr(20 downto 16); -- Registrador fonte 2 (A2) / destino tipo-I (Mux RegDst 0)
-    rd    <= instr(15 downto 11); -- Registrador destino tipo-R (Mux RegDst 1)
-    imm16 <= instr(15 downto 0);  -- Imediato de 16 bits (Sign Extend)
+    rs    <= Instr(25 downto 21); -- Registrador fonte 1 (A1)
+    rt    <= Instr(20 downto 16); -- Registrador fonte 2 (A2) / destino tipo-I (Mux RegDst 0)
+    rd    <= Instr(15 downto 11); -- Registrador destino tipo-R (Mux RegDst 1)
+    imm16 <= Instr(15 downto 0);  -- Imediato de 16 bits (Sign Extend)
 
     -- =========================================================================
     -- 2. LOGICA DE ATUALIZACAO DO PC (PC+4 e Branch)
     -- =========================================================================
     -- Porta AND do diagrama: desvia somente se for instrucao de Branch E Zero = '1'
-    s_pcsrc <= branch and s_zero;
+    PCSrc <= Branch and Zero;
 
-    -- Mux do proximo PC (0: PC+4 | 1: PCBranch)
+    -- Mux do proximo PC (0: PCPlus4 | 1: PCBranch)
     MUX_PC : mux2x1_32bits
         generic map(WIDTH => 32)
         port map(
-            in0 => s_pc_plus4,
-            in1 => s_pc_branch,
-            sel => s_pcsrc,
-            y   => s_pc_next
+            in0 => PCPlus4,
+            in1 => PCBranch,
+            sel => PCSrc,
+            y   => PCNext
         );
 
     -- Registrador do PC
     REG_PC : pc_register
         port map(
-            clk    => clk,
-            rst    => rst,
-            pc_in  => s_pc_next,
-            pc_out => s_pc_current
+            CLK     => clk,
+            reset   => rst,
+            PC_next => PCNext,
+            PC      => PC_i
         );
 
     -- Somador PC + 4
-    ADD_PC4 : adder_32
+    ADD_PC4 : adder_pc4
         port map(
-            a => s_pc_current,
-            b => x"00000004",
-            y => s_pc_plus4
+            PC      => PC_i,
+            PCPlus4 => PCPlus4
         );
 
     -- Shift Left 2 (desloca SignImm em 2 bits para alinhar endereco de palavra)
     SHL2 : shift_left_2
         port map(
-            a => s_sign_imm,
-            y => s_sign_imm_shifted
+            data_in  => SignImm,
+            data_out => SignImmSh
         );
 
     -- Somador do endereco de desvio: PCBranch = (SignImm << 2) + PCPlus4
-    ADD_BRANCH : adder_32
+    ADD_BRANCH : adder_branch
         port map(
-            a => s_sign_imm_shifted,
-            b => s_pc_plus4,
-            y => s_pc_branch
+            PCPlus4   => PCPlus4,
+            SignImmSh => SignImmSh,
+            PCBranch  => PCBranch
         );
 
     -- =========================================================================
@@ -197,28 +214,28 @@ begin
         port map(
             in0 => rt,
             in1 => rd,
-            sel => regdst,
-            y   => s_write_reg
+            sel => RegDst,
+            y   => WriteReg
         );
 
     -- Banco de Registradores
     REGFILE : register_file
         port map(
             CLK => clk,
-            WE3 => regwrite,
+            WE3 => RegWrite,
             A1  => rs,
             A2  => rt,
-            A3  => s_write_reg,
-            WD3 => s_result,
-            RD1 => s_rd1,
-            RD2 => s_rd2
+            A3  => WriteReg,
+            WD3 => Result,
+            RD1 => SrcA,
+            RD2 => WriteData_i
         );
 
     -- Extensor de Sinal (16 -> 32 bits)
     SIGNEXT : sign_extend
         port map(
             imm_in  => imm16,
-            imm_out => s_sign_imm
+            imm_out => SignImm
         );
 
     -- =========================================================================
@@ -228,37 +245,37 @@ begin
     MUX_ALUSRC : mux2x1_32bits
         generic map(WIDTH => 32)
         port map(
-            in0 => s_rd2,
-            in1 => s_sign_imm,
-            sel => alusrc,
-            y   => s_src_b
+            in0 => WriteData_i,
+            in1 => SignImm,
+            sel => ALUSrc,
+            y   => SrcB
         );
 
     -- ULA
     ULA : alu
         port map(
-            src_a      => s_rd1,
-            src_b      => s_src_b,
-            alucontrol => alucontrol,
-            alu_result => s_alu_result,
-            zero       => s_zero
+            SrcA       => SrcA,
+            SrcB       => SrcB,
+            ALUControl => ALUControl,
+            ALUResult  => ALUResult_i,
+            Zero       => Zero
         );
 
     -- Mux de escrita de volta no registrador WD3 (0: ALUResult | 1: ReadData)
     MUX_MEMTOREG : mux2x1_32bits
         generic map(WIDTH => 32)
         port map(
-            in0 => s_alu_result,
-            in1 => readdata,
-            sel => memtoreg,
-            y   => s_result
+            in0 => ALUResult_i,
+            in1 => ReadData,
+            sel => MemtoReg,
+            y   => Result
         );
 
     -- =========================================================================
     -- 5. SAIDAS DO DATAPATH PARA AS MEMORIAS (CONECTADAS NO PROCESSADOR.VHD)
     -- =========================================================================
-    pc        <= s_pc_current;
-    aluout    <= s_alu_result;
-    writedata <= s_rd2;
+    PC        <= PC_i;
+    ALUResult <= ALUResult_i;
+    WriteData <= WriteData_i;
 
 end architecture;
